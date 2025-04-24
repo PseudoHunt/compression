@@ -1,0 +1,48 @@
+
+Entropy-Aware Differentiable Soft Quantization Framework (Text Format)
+
+Step-by-Step Differentiable Quantization
+----------------------------------------
+
+1. Normalize each weight:
+   For each weight w_i, compute:
+       w_i_norm = (w_i - w_min) / (w_max - w_min + epsilon)
+
+2. Compute distance to each quantization bin:
+   For each weight w_i and bin q_j:
+       D_ij = -abs(w_i_norm - q_j)
+
+3. Apply temperature-scaled softmax over bins:
+   For each bin j:
+       P_ij = exp(D_ij * T) / sum over k of exp(D_ik * T)
+
+4. Compute expected quantized value in normalized space:
+       w_i_norm_hat = sum over j of (P_ij * q_j)
+
+5. Dequantize back to original weight range:
+       w_i_hat = w_i_norm_hat * (w_max - w_min) + w_min
+
+Entropy Calculation
+-------------------
+
+6. Aggregate bin mass across all weights (sum over axis 0):
+   For each bin j:
+       mu_j = sum over i of P_ij
+
+7. Normalize to form a probability distribution over bins:
+       p_j = mu_j / sum over k of mu_k
+
+8. Compute entropy of soft bin histogram:
+       H = - sum over j of (p_j * log(p_j + epsilon))
+
+Loss Objective with Entropy Constraint
+--------------------------------------
+
+Final loss to minimize:
+    L_total = lambda_1 * L_recon + lambda_2 * L_class + lambda_3 * (H / (B + epsilon))^2
+
+Where:
+- L_recon is the reconstruction loss (e.g., MSE between original and quantized layer output)
+- L_class is the model's task loss (e.g., classification)
+- B is the entropy budget:
+      B = (32 * num_weights) / compression_ratio_target
