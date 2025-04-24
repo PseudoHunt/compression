@@ -1,0 +1,8 @@
+Let:
+- N: number of weights in the layer
+- L: number of quantization bins (e.g., L = 4 for 2-bit quantization)
+- w_i: i-th weight in the layer (i ∈ {1, ..., N})
+- q_j: j-th quantization bin value (j ∈ {1, ..., L})
+- T: softmax temperature
+- P_{ij}: soft assignment probability of w_i to bin q_j
+- μ_j: total mass assigned to bin j
