@@ -44,7 +44,7 @@ def evaluate(model, loader):
             correct += (p == y).sum().item()
             total += y.size(0)
     acc = 100 * correct / total
-    print(f"🌟 Accuracy: {acc:.2f}%")
+    print(f" Accuracy: {acc:.2f}%")
     return acc
 
 # ==== Activation Capture ====
@@ -123,9 +123,9 @@ def optimize_all_layers(model, test_loader):
             if isinstance(mod, nn.BatchNorm2d) or name.endswith(".bias"):
                 base_name = name.replace('.', '_')
                 safetensor_dict[f"{base_name}.dequant"] = param.detach().cpu()
-                print(f"🟢 Stored unquantized: {name}")
+                print(f" Stored unquantized: {name}")
         except KeyError:
-            print(f"⚠️ Module not found for param: {name}")
+            print(f"Module not found for param: {name}")
 
         print(f"\n🔧 Optimizing {name}...")
         layer_name = name.replace(".weight", "")
@@ -201,15 +201,15 @@ def optimize_all_layers(model, test_loader):
         if "bn" in name or ".bias" in name:
             base_name = name.replace('.', '_')
             safetensor_dict[f"{base_name}.dequant"] = param.detach().cpu()
-            print(f"🟢 Stored unquantized: {name}")
+            print(f"Stored unquantized: {name}")
 
     save_file(safetensor_dict, "quantized_model.safetensors")
-    print("💾 Saved all quantized weights to 'quantized_model.safetensors'")
-    print("✅ Full-layer quantization complete.")
+    print("Saved all quantized weights to 'quantized_model.safetensors'")
+    print("Full-layer quantization complete.")
 
 # ==== Run ====
-print("\n📊 Accuracy BEFORE quantization:")
+print("\nAccuracy BEFORE quantization:")
 evaluate(model, test_loader)
 optimize_all_layers(model, test_loader)
-print("\n📊 Accuracy AFTER quantization:")
+print("\nAccuracy AFTER quantization:")
 evaluate(model, test_loader)
