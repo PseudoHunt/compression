@@ -53,52 +53,56 @@ mask_batches = attention_mask.split(BATCH_SIZE)
 # === Define BlockwiseQuantizationOptim with GPTQ weight ===
 class BlockwiseQuantizationOptim(nn.Module):
     def __init__(self, weight, block_size=128, num_bits=4, fixed_T=100.0,
-                 gptq_scale=None, gptq_zero=None, gptq_g_idx=None):
-        super().__init__()
-        self.block_size = block_size
-        self.num_bits = num_bits
-        self.fixed_T = fixed_T
-        self.original_shape = weight.shape
-        self.num_levels = 2 ** num_bits
+             gptq_scale=None, gptq_zero=None, gptq_g_idx=None):
+    super().__init__()
+    self.block_size = block_size
+    self.num_bits = num_bits
+    self.fixed_T = fixed_T
+    self.original_shape = weight.shape
+    self.num_levels = 2 ** num_bits
 
-        padded_rows = math.ceil(weight.size(0) / block_size) * block_size
-        padded_cols = math.ceil(weight.size(1) / block_size) * block_size
-        self.padded_weight = torch.zeros((padded_rows, padded_cols), device=weight.device)
-        self.padded_weight[:weight.size(0), :weight.size(1)] = weight
+    padded_rows = math.ceil(weight.size(0) / block_size) * block_size
+    padded_cols = math.ceil(weight.size(1) / block_size) * block_size
+    self.padded_weight = torch.zeros((padded_rows, padded_cols), device=weight.device)
+    self.padded_weight[:weight.size(0), :weight.size(1)] = weight
 
-        self.blocks = []
-        self.block_metadata = []
-        for i in range(0, padded_rows, block_size):
-            for j in range(0, padded_cols, block_size):
-                block = self.padded_weight[i:i+block_size, j:j+block_size]
-                self.blocks.append(block)
-                self.block_metadata.append((i, j))
+    self.blocks = []
+    self.block_metadata = []
+    for i in range(0, padded_rows, block_size):
+        for j in range(0, padded_cols, block_size):
+            block = self.padded_weight[i:i+block_size, j:j+block_size]
+            self.blocks.append(block)
+            self.block_metadata.append((i, j))
 
-        self.w_min = nn.ParameterList()
-        self.w_max = nn.ParameterList()
+    self.w_min = nn.ParameterList()
+    self.w_max = nn.ParameterList()
 
-        for _, (i, j) in enumerate(self.block_metadata):
-            if gptq_scale is not None and gptq_zero is not None and gptq_g_idx is not None:
-                # Compute group indices for this block of columns
-                col_start = j
-                col_end = min(j + block_size, gptq_g_idx.shape[0])
-                block_g_idx = gptq_g_idx[col_start:col_end]  # Shape: [block_cols]
+    for _, (i, j) in enumerate(self.block_metadata):
+        if gptq_scale is not None and gptq_zero is not None and gptq_g_idx is not None:
+            col_start = j
+            col_end = min(j + block_size, gptq_g_idx.shape[0])
+            block_g_idx = gptq_g_idx[col_start:col_end]  # shape: [block_cols]
 
-                # Take the mean scale and zero for this block's group mapping
-                scale_block = gptq_scale[0, block_g_idx].mean().detach()
-                zero_block = gptq_zero[0, block_g_idx].mean().detach()
+            # Per-column scale and zero from GPTQ
+            scale_block = gptq_scale[0, block_g_idx]  # [block_cols]
+            zero_block = gptq_zero[0, block_g_idx]    # [block_cols]
 
-                # Derive min and max from scale/zero
-                w_min = (-zero_block * scale_block)
-                w_max = ((2 ** self.num_bits - 1 - zero_block) * scale_block)
-            else:
-                # Fallback to naive initialization
-                block = self.padded_weight[i:i+block_size, j:j+block_size]
-                w_min = block.min().detach()
-                w_max = block.max().detach()
+            # Compute min and max per column
+            w_min_per_col = (-zero_block * scale_block)  # [block_cols]
+            w_max_per_col = (scale_block * (2 ** self.num_bits - 1 - zero_block))  # [block_cols]
 
-            self.w_min.append(nn.Parameter(w_min.view(1)))
-            self.w_max.append(nn.Parameter(w_max.view(1)))
+            # Use conservative block-wise min/max
+            w_min = w_min_per_col.min().detach()
+            w_max = w_max_per_col.max().detach()
+        else:
+            # Fallback to naive min/max from the block
+            block = self.padded_weight[i:i+block_size, j:j+block_size]
+            w_min = block.min().detach()
+            w_max = block.max().detach()
+
+        self.w_min.append(nn.Parameter(w_min.view(1)))
+        self.w_max.append(nn.Parameter(w_max.view(1)))
+
 
 
     def forward(self):
