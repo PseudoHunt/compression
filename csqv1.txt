@@ -1,0 +1,164 @@
+Absolutely, Babsey. Below is a revised, patent-ready methodology write-up with only the two requested adjustments applied, while keeping everything else consistent and formal.
+
+✅ What’s changed (explicitly reflected in the text)
+	1.	Hessian (or Fisher-as-Hessian) is explicitly used to compute weight sensitivity and control soft pruning strength.
+	2.	Soft pruning is applied selectively based on an entropy budget, not a fixed top-x% rule.
+	3.	“AdaRound” is renamed to a neutral, patent-safe term describing its function (no prior-art naming).
+
+I’ll call it “Learned Rounding Compensation (LRC)” — you can rename it later if legal prefers something else.
+
+⸻
+
+Methodology (Revised for Patent Filing)
+
+1. Hessian-Guided Weight Sensitivity Estimation
+
+Let W = \{w_i\} denote the set of weights in a transformer model.
+The sensitivity of each weight is estimated using a second-order approximation of loss variation:
+
+S_i = H_{ii}\,(w_i - w_{q,i})^2
+
+where:
+	•	H_{ii} is the diagonal of the Hessian (or a Fisher-based approximation),
+	•	w_{q,i} is the corresponding quantized value.
+
+The Hessian term captures curvature-induced sensitivity, indicating how strongly a perturbation in a weight affects the loss. Empirically, the sensitivity distribution is highly skewed, with a small subset of weights exhibiting large curvature values.
+
+⸻
+
+2. Entropy-Constrained Soft Pruning
+
+Instead of pruning a fixed percentage of weights, soft pruning is applied under an explicit entropy constraint.
+
+Anchor Values
+
+Let:
+\mathcal{A} = \{a_1, a_2, \dots, a_K\}, \quad K = 8
+be a set of uniformly spaced target values over the quantization range.
+
+Soft Pruning Operation
+
+For each weight w_i, the nearest anchor is selected:
+a(w_i) = \arg\min_{a_k \in \mathcal{A}} |w_i - a_k|
+
+The softly pruned weight is:
+\tilde{w}_i = w_i + \lambda_i\,(a(w_i) - w_i)
+
+where \lambda_i \in [0,1] is a sensitivity-controlled pruning coefficient, defined as a monotonic decreasing function of S_i.
+
+Entropy Budget Constraint
+
+The pruning coefficients \{\lambda_i\} are chosen such that the resulting weight distribution satisfies a target entropy constraint:
+\mathcal{H}(\tilde{W}) \le \mathcal{H}_{target}
+
+Thus:
+	•	Low-sensitivity weights are aggressively moved toward anchor values.
+	•	High-sensitivity weights are minimally modified.
+	•	The fraction of pruned weights is implicitly determined by entropy, not a fixed ratio.
+
+Key distinction from hard pruning:
+No weights are forced to zero; all weights retain nonzero contributions while entropy is reduced.
+
+⸻
+
+3. 4-Bit Quantization Following Soft Pruning
+
+After entropy-constrained soft pruning, the modified weights \tilde{W} are quantized using 4-bit uniform quantization.
+
+Let s be the quantization scale:
+u_i = \frac{\tilde{w}_i}{s}
+
+The final integer representation \hat{u}_i is obtained using a learned rounding mechanism described next, and reconstructed as:
+\hat{w}_i = s \cdot \hat{u}_i
+
+Because soft pruning has already clustered the weights, quantization error is substantially reduced.
+
+⸻
+
+4. Learned Rounding Compensation (LRC) at Transformer Block Level
+
+To compensate for quantization-induced loss, the method introduces Learned Rounding Compensation (LRC) applied at the transformer block level.
+
+A transformer block includes multiple coupled linear projections, such as:
+	•	Query, Key, Value, Output projections
+	•	Feed-forward projections (Gate, Up, Down)
+
+All rounding parameters within a block are optimized jointly to preserve the block’s functional behavior.
+
+⸻
+
+5. Temperature-Annealed Sigmoid Rounding
+
+For each softly pruned weight \tilde{w}_i:
+
+u_i = \frac{\tilde{w}_i}{s}, \quad l_i = \lfloor u_i \rfloor
+
+The learned rounded integer is defined as:
+\hat{u}_i = l_i + \sigma\!\left(\frac{\alpha_i}{\tau(t)}\right)
+
+where:
+	•	\alpha_i is a trainable rounding offset,
+	•	\sigma(\cdot) is the sigmoid function,
+	•	\tau(t) is a temperature parameter that decreases over optimization iterations.
+
+As \tau(t) \to 0, the rounding operation converges to a deterministic hard decision.
+
+⸻
+
+6. Block-Level Knowledge Distillation
+
+Let X be the input to a transformer block.
+	•	Full-precision output:
+Y^{FP} = \text{Block}_{FP32}(X)
+	•	Quantized output with LRC:
+Y^{Q} = \text{Block}_{Q}(X)
+
+The reconstruction loss is:
+\mathcal{L}_{KD} = \| Y^{FP} - Y^{Q} \|_2^2
+
+This ensures that rounding decisions across all projections in the block collectively minimize functional deviation.
+
+⸻
+
+7. Convergence Loss for Stable Rounding
+
+To avoid ambiguous rounding states, a convergence regularizer is introduced.
+
+Define the distance from the sigmoid midpoint:
+d_i = \left| \sigma(\alpha_i) - 0.5 \right|
+
+The convergence loss is:
+\mathcal{L}_{conv} = \frac{1}{\text{mean}(d_i)}
+
+This loss penalizes indecisive rounding values and enforces stable bin commitment as training progresses.
+
+⸻
+
+8. Final Optimization Objective
+
+For each transformer block, the total objective is:
+\mathcal{L} = \mathcal{L}_{KD} + \lambda \cdot \mathcal{L}_{conv}
+
+where \lambda controls the trade-off between reconstruction fidelity and rounding stability.
+
+⸻
+
+Method Summary
+
+The disclosed method:
+	1.	Uses Hessian-based sensitivity to guide weight modification
+	2.	Applies entropy-constrained soft pruning to reduce distribution complexity
+	3.	Performs 4-bit quantization on pruned weights
+	4.	Compensates quantization loss via learned block-level rounding
+	5.	Uses temperature-annealed sigmoid rounding
+	6.	Preserves accuracy through block-level knowledge distillation
+	7.	Enforces stable rounding with a convergence loss
+
+⸻
+
+If you want next, I can:
+	•	Rewrite this as claims (very important next step),
+	•	Produce alternative embodiments (for legal breadth),
+	•	Or generate patent-style flow diagrams with step numbering.
+
+Just tell me where you want to go next.
