@@ -155,10 +155,123 @@ The disclosed method:
 	7.	Enforces stable rounding with a convergence loss
 
 ⸻
+Great question, Babsey — this is exactly what patent examiners and IP lawyers care about.
 
-If you want next, I can:
-	•	Rewrite this as claims (very important next step),
-	•	Produce alternative embodiments (for legal breadth),
-	•	Or generate patent-style flow diagrams with step numbering.
+Below are the core patentable points, written the way you’d think about claims, not marketing. These are the novel, defensible hooks of your invention.
 
-Just tell me where you want to go next.
+⸻
+
+Main Patentable Points
+
+1. Entropy-Constrained Soft Pruning (Not Ratio-Based)
+
+A method of modifying neural network weights by softly moving weights toward a fixed set of anchor values,
+where the extent and selection of soft pruning are determined by an entropy constraint, rather than by pruning a fixed percentage of weights.
+
+🔹 Key novelty:
+
+Pruning is governed by distribution entropy, not a pre-defined sparsity ratio.
+
+⸻
+
+2. Hessian-Guided Soft Pruning Strength
+
+A method of determining per-weight soft-pruning strength using Hessian-based sensitivity,
+such that high-curvature weights are minimally modified while low-curvature weights are aggressively reshaped.
+
+🔹 Key novelty:
+
+Using second-order curvature to control continuous pruning, not binary pruning decisions.
+
+⸻
+
+3. Multi-Anchor Soft Pruning for Entropy Reduction
+
+A method of reducing quantization entropy by softly clustering weights around multiple predefined anchor values (e.g., 8 values),
+rather than collapsing weights to zero or a single value.
+
+🔹 Key novelty:
+
+Soft pruning toward multiple anchors specifically designed for quantization compatibility.
+
+⸻
+
+4. Low-Bit Quantization Following Entropy Shaping
+
+A quantization method in which 4-bit quantization is applied after entropy-reducing soft pruning,
+where the pruning operation explicitly prepares the distribution for low-bit quantization.
+
+🔹 Key novelty:
+
+Quantization is performed on a distribution that has already been optimized for low entropy.
+
+⸻
+
+5. Transformer Block-Level Learned Rounding Compensation
+
+A method of compensating quantization loss by jointly learning rounding parameters across all linear projections within a transformer block,
+instead of learning rounding independently per tensor or per layer.
+
+🔹 Key novelty:
+
+Rounding is optimized at the transformer block granularity, capturing inter-projection coupling.
+
+⸻
+
+6. Temperature-Annealed Sigmoid Rounding for Quantization
+
+A method of performing learned rounding using a sigmoid-based continuous relaxation with temperature annealing,
+progressively transitioning from soft rounding to deterministic hard rounding.
+
+🔹 Key novelty:
+
+Controlled soft-to-hard rounding specifically tailored for low-bit quantization.
+
+⸻
+
+7. Block-Level Knowledge Distillation for Rounding Optimization
+
+A method of training rounding parameters using block-level knowledge distillation,
+where the output of a quantized transformer block is matched to its full-precision counterpart.
+
+🔹 Key novelty:
+
+Distillation applied to rounding decisions, not weight values or activations alone.
+
+⸻
+
+8. Distance-Based Convergence Loss for Stable Rounding
+
+A convergence regularizer defined using the inverse mean distance of sigmoid outputs from the midpoint,
+penalizing ambiguous rounding states.
+
+🔹 Key novelty:
+
+A novel convergence loss that directly measures rounding decisiveness.
+
+⸻
+
+High-Value Claim Bundles (How to Group Them)
+
+For claim strategy, these group well:
+
+Independent Claim Core
+	•	Hessian-guided entropy-constrained soft pruning
+	•	Followed by low-bit quantization
+	•	With block-level learned rounding compensation
+
+Dependent Claims
+	•	Multi-anchor pruning (e.g., 8 anchors)
+	•	4-bit quantization
+	•	Temperature-annealed sigmoid rounding
+	•	Block-level KD
+	•	Distance-based convergence loss
+
+⸻
+
+One-Line Examiner-Facing Summary
+
+A method that reduces quantization error by reshaping weight distributions under an entropy constraint using Hessian-guided soft pruning, followed by block-level learned rounding compensation with convergence-driven stability.
+
+⸻
+
